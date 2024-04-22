@@ -1,0 +1,155 @@
+!pip install aspose-imaging-cloud
+!pip install invisible-watermark
+
+# importing the library
+from PIL import Image
+import matplotlib.pyplot as plt
+import numpy as np
+from PIL import ImageFont
+from PIL import ImageDraw
+import cv2
+from imwatermark import WatermarkEncoder
+from imwatermark import WatermarkDecoder
+
+def watermark_text(image):
+    # text Watermark
+    watermark_image = image.copy()
+
+    draw = ImageDraw.Draw(watermark_image)
+
+    w, h = image.size
+    x, y = int(w / 2), int(h / 2)
+    if x > y:
+       font_size = y
+    elif y > x:
+       font_size = x
+    else:
+       font_size = x
+
+    font = ImageFont.truetype("/content/Ojuju-ExtraBold.ttf", int(font_size/6))
+    watermark_name=input("Enter the watermark you want on the picture : ")
+
+    # add watermark
+    draw.text((x, y),watermark_name, fill=(0, 0, 0), font=font, anchor='ms')
+    plt.subplot(1, 2, 1)
+    plt.title("black text")
+    plt.imshow(watermark_image)
+
+    # add watermark
+    draw.text((x, y),watermark_name, fill=(255, 255, 255), font=font, anchor='ms')
+    plt.subplot(1, 2, 2)
+    plt.title("white text")
+    plt.imshow(watermark_image)
+    return watermark_image
+
+def watermark_picture(copied_image, crop_image):
+    # image watermark
+    size = (60, 60)
+    # to keep the aspect ratio intact
+    crop_image.thumbnail(size)
+
+    # add watermark
+    # base image
+    copied_image.paste(crop_image, (400, 550))
+    # pasted the crop image onto the base image
+
+    # Display the image after applying the watermark
+    plt.imshow(copied_image)
+    plt.show()
+    return copied_image
+
+def invisible_watermark_encoding(image, c):
+    watermark_name = input("Enter the invisible watermark you want on the picture: ")
+    encoder = WatermarkEncoder()
+    encoder.set_watermark('bytes', watermark_name.encode('utf-8'))
+
+    # Define the decoder object
+    decoder = WatermarkDecoder('bytes', 64)
+
+    # Convert PIL Image to NumPy array
+    image_array = np.array(image)
+
+    bgr_encoded = encoder.encode(image_array, 'dwtDct')
+
+    # Combine the invisible watermark with the hybrid watermark
+    if c == '4':
+        print("Select which visible watermarking you want to hybrid with invisible watermark : ")
+        print("1. Text Watermarking.")
+        print("2. Image Watermarking.")
+        hybrid = input("Enter the hybrid ID you want : ")
+        if hybrid == '1':
+            hybrid_text_img = watermark_text(image)
+            encoder.set_watermark('bytes', watermark_name.encode('utf-8'))
+            bgr_encoded = encoder.encode(np.array(hybrid_text_img), 'dwtDct')
+            cv2.imwrite('hybrid_text_img.png', bgr_encoded)
+        if hybrid == '2':
+            watermark = Image.open("/content/watermark_blue.jpg")
+            hybrid_pic_img = watermark_picture(image, watermark)
+            encoder.set_watermark('bytes', watermark_name.encode('utf-8'))
+            bgr_encoded = encoder.encode(np.array(hybrid_pic_img), 'dwtDct')
+            cv2.imwrite('hybrid_pic_img.png', bgr_encoded)
+    else:
+       cv2.imwrite('test_wm.png', bgr_encoded)
+       watermarked_img = Image.open('test_wm.png')
+       if c == '3':
+          # Display the watermarked image
+          plt.imshow(watermarked_img)
+          plt.axis('off')
+          plt.show()
+
+    # Decode the watermark to verify encoding
+    decoded_watermark = decoder.decode(bgr_encoded, 'dwtDct')
+    print("Encoded Watermark: ", decoded_watermark.decode('utf-8'))
+
+    return 'test_wm.png'  # Return the filename of the watermarked image
+
+def invisible_watermark_decoding(image_path):
+    # Define the decoder object
+    decoder = WatermarkDecoder('bytes', 64)
+
+    bgr = cv2.imread(image_path)
+    watermark = decoder.decode(bgr, 'dwtDct')
+
+    # Print the decoded watermark
+    print("Decoded Watermark : ", watermark.decode('utf-8'))
+    plt.imshow(bgr)
+    plt.show()
+
+img = Image.open("/content/femalw.png")
+watermark_img = Image.open("/content/wtmkInsert.png")
+print("1. Text Watermarking.")
+print("2. Image Watermarking.")
+print("3. Invisible Image Watermarking.")
+print("4. Hybrid Image Watermarking.")
+print("5. Invisible Watermark Decoding.")
+print("X. Exit")
+choice=input("Enter the operation number you want to do : ")
+if choice=='1':
+  watermark_text(img)
+elif choice=='2':
+  watermark_picture(img,watermark_img)
+elif choice=='3':
+  watermarked_img_path = invisible_watermark_encoding(img,choice)
+  print("INVISIBLE WATERMARK ENCODING SUCCESSFUL!")
+elif choice=='4':
+  watermarked_img_path = invisible_watermark_encoding(img,choice)
+  print("HYBRID WATERMARKING SUCCESSFUL!")
+elif choice=='5':
+  print("1. Hybrid Text Watermarked Image.")
+  print("2. Hybrid Image Watermarked Image.")
+  print("3. Invisible Watermarked Image.")
+  c_hybrid=input("Enter the operation number you want to do : ")
+  if c_hybrid=='1':
+    watermarked_img_path = "/content/hybrid_text_img.png"
+    invisible_watermark_decoding(watermarked_img_path)
+  if c_hybrid=='2':
+    watermarked_img_path = "/content/hybrid_pic_img.png"
+    invisible_watermark_decoding(watermarked_img_path)
+  if c_hybrid=='3':
+    watermarked_img_path = "/content/test_wm.png"
+    invisible_watermark_decoding(watermarked_img_path)
+
+elif choice=='X':
+  print("Program Successfully Exited!\nThankyou!")
+else:
+  print("Invalid Input!!!")
